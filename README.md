@@ -39,39 +39,39 @@ Android系统中也无法避免因为多线程的引入而导致出现诸如上�
 
 我们的程序可以创建出非常多的子线程一起并发执行的，可是基于CPU时间片轮转调度的机制，不可能所有的线程都可以同时被调度执行，CPU需要根据线程的优先级赋予不同的时间片。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_CPU.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_CPU.png)
 
 Android系统会根据当前运行的可见的程序和不可见的后台程序对线程进行归类，划分为forground的那部分线程会大致占用掉CPU的90%左右的时间片，background的那部分线程就总共只能分享到5%-10%左右的时间片。之所以设计成这样是因为forground的程序本身的优先级就更高，理应得到更多的执行时间。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_90.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_90.png)
 
 默认情况下，新创建的线程的优先级默认和创建它的母线程保持一致。如果主UI线程创建出了几十个工作线程，这些工作线程的优先级就默认和主线程保持一致了，为了不让新创建的工作线程和主线程抢占CPU资源，需要把这些线程的优先级进行降低处理，这样才能给帮组CPU识别主次，提高主线程所能得到的系统资源。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_less.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_less.png)
 
 在Android系统里面，我们可以通过android.os.Process.setThreadPriority(int)设置线程的优先级，参数范围从-20到24，数值越小优先级越高。Android系统还为我们提供了以下的一些预设值，我们可以通过给不同的工作线程设置不同数值的优先级来达到更细粒度的控制。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_const.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_const.png)
 
 
 大多数情况下，新创建的线程优先级会被设置为默认的0，主线程设置为0的时候，新创建的线程还可以利用THREAD_PRIORITY_LESS_FAVORABLE或者THREAD_PRIORITY_MORE_FAVORABLE来控制线程的优先级。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_value.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_value.png)
 
 Android系统里面的AsyncTask与IntentService已经默认帮助我们设置线程的优先级，但是对于那些非官方提供的多线程工具类，我们需要特别留意根据需要自己手动来设置线程的优先级。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_asynctask.png)
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpriority_intentservice.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_asynctask.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpriority_intentservice.png)
 
 ###1.1.4 线程和加载器
 
 当启动工作线程的Activity被销毁的时候，我们应该做点什么呢？为了方便的控制工作线程的启动与结束，Android为我们引入了Loader来解决这个问题。我们知道Activity有可能因为用户的主动切换而频繁的被创建与销毁，也有可能是因为类似屏幕发生旋转等被动原因而销毁再重建。在Activity不停的创建与销毁的过程当中，很有可能因为工作线程持有Activity的View而导致内存泄漏(因为工作线程很可能持有View的强引用，另外工作线程的生命周期还无法保证和Activity的生命周期一致，这样就容易发生内存泄漏了)。除了可能引起内存泄漏之外，在Activity被销毁之后，工作线程还继续更新视图是没有意义的，因为此时视图已经不在界面上显示了。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_loader_bad.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_loader_bad.png)
 
 Loader的出现就是为了确保工作线程能够和Activity的生命周期保持一致，同时避免出现前面提到的问题。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_loader_good.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_loader_good.png)
 
 LoaderManager会对查询的操作进行缓存，只要对应Cursor上的数据源没有发生变化，在配置信息发生改变的时候(例如屏幕的旋转)，Loader可以直接把缓存的数据回调到onLoadFinished()，从而避免重新查询数据。另外系统会在Loader不再需要使用到的时候(例如使用Back按钮退出当前页面)回调onLoaderReset()方法，我们可以在这里做数据的清除等等操作。
 
@@ -135,11 +135,11 @@ HandlerThread比较合适处理那些在工作线程执行，需要花费时间�
 
 使用线程池需要特别注意同时并发线程数量的控制，理论上来说，我们可以设置任意你想要的并发数量，但是这样做非常的不好。因为CPU只能同时执行固定数量的线程数，一旦同时并发的线程数量超过CPU能够同时执行的阈值，CPU就需要花费精力来判断到底哪些线程的优先级比较高，需要在不同的线程之间进行调度切换。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpool_3.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpool_3.png)
 
 一旦同时并发的线程数量达到一定的量级，这个时候CPU在不同线程之间进行调度的时间就可能过长，反而导致性能严重下降。另外需要关注的一点是，每开一个新的线程，都会耗费至少64K+的内存。为了能够方便的对线程数量进行控制，ThreadPoolExecutor为我们提供了初始化的并发线程数量，以及最大的并发数量进行设置。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_threadpool_4.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_threadpool_4.png)
 
 另外需要关注的一个问题是：Runtime.getRuntime().availableProcesser()方法并不可靠，他返回的值并不是真实的CPU核心数，因为CPU会在某些情况下选择对部分核心进行睡眠处理，在这种情况下，返回的数量就只能是激活的CPU核心数。
 
@@ -147,7 +147,7 @@ HandlerThread比较合适处理那些在工作线程执行，需要花费时间�
 
 默认的Service是执行在主线程的，可是通常情况下，这很容易影响到程序的绘制性能(抢占了主线程的资源)。除了前面介绍过的AsyncTask与HandlerThread，我们还可以选择使用IntentService来实现异步操作。IntentService继承自普通Service同时又在内部创建了一个HandlerThread，在onHandlerIntent()的回调里面处理扔到IntentService的任务。所以IntentService就不仅仅具备了异步线程的特性，还同时保留了Service不受主页面生命周期影响的特点。如此一来，我们可以在IntentService里面通过设置闹钟间隔性的触发异步任务，例如刷新数据，更新缓存的图片或者是分析用户操作行为等等，当然处理这些任务需要小心谨慎。
 
-![](https://github.com/guoxiaoxing/android-multi-thread-pratice/image/android_perf_5_intentservice_outline.png)
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_intentservice_outline.png)
 
 使用IntentService需要特别留意以下几点：
 
