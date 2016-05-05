@@ -23,15 +23,42 @@ Android一共提供路4种多线程模型
 
 Android系统中也无法避免因为多线程的引入而导致出现诸如上文提到的种种问题。Android UI对象的创建，更新，销毁等等操作都默认是执行在主线程，但是如果我们在非主线程对UI对象进行操作，程序将可能出现异常甚至是崩溃。
 
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_memory_thread_update.png)
+
 另外，在非UI线程中直接持有UI对象的引用也很可能出现问题。例如Work线程中持有某个UI对象的引用，在Work线程执行完毕之前，UI对象在主线程中被从ViewHierarchy中移除了，这个时候UI对象的任何属性都已经不再可用了，另外对这个UI对象的更新操作也都没有任何意义了，因为它已经从ViewHierarchy中被移除，不再绘制到画面上了。
 
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_memory_view_remove.png)
+
 不仅如此，View对象本身对所属的Activity是有引用关系的，如果工作线程持续保有View的引用，这就可能导致Activity无法完全释放。除了直接显式的引用关系可能导致内存泄露之外，我们还需要特别留意隐式的引用关系也可能导致泄露。例如通常我们会看到在Activity里面定义的一个AsyncTask，这种类型的AsyncTask与外部的Activity是存在隐式引用关系的，只要Task没有结束，引用关系就会一直存在，这很容易导致Activity的泄漏。更糟糕的情况是，它不仅仅发生了内存泄漏，还可能导致程序异常或者崩溃。
+
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_memory_asynctask.png)
 
 为了解决上面的问题，我们需要谨记的原则就是：不要在任何非UI线程里面去持有UI对象的引用。系统为了确保所有的UI对象都只会被UI线程所进行创建，更新，销毁的操作，特地设计了对应的工作机制(当Activity被销毁的时候，由该Activity所触发的非UI线程都将无法对UI对象进行操作，否者就会抛出程序执行异常的错误)来防止UI对象被错误的使用。
 
 
+##1.2 AsyncTask
 
-##1.2 HandlerThread
+AsyncTask把在主线程里面的准备工作放到onPreExecute()方法里面进行执行，doInBackground()方法执行在工作线程中，用来处理那些繁重的任务，一旦任务执行完毕，就会调用onPostExecute()方法返回到主线程。
+
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_asynctask_mode.png)
+
+在使用AsyncTask的过程中，通常会有以下几个问题。
+
+1. 默认情况下，所有的AsyncTask任务都是被线性调度执行的，他们处在同一个任务队列当中，按顺序逐个执行。假设你按照顺序启动20个AsyncTask，一旦其中的某个AsyncTask执行时间过长，队列中的其他剩余AsyncTask都处于阻塞状态，必须等到该任务执行完毕之后才能够有机会执行下一个任务。情况如下图所示：
+
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_asynctask_single_queue.png)
+
+为了解决上面提到的线性队列等待的问题，我们可以使用AsyncTask.executeOnExecutor()强制指定AsyncTask使用线程池并发调度任务。
+
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_asynctask_thread_pool.png)
+
+2. 如何才能够真正的取消一个AsyncTask的执行呢？我们知道AsyncTaks有提供cancel()的方法，但是这个方法实际上做了什么事情呢？线程本身并不具备中止正在执行的代码的能力，为了能够让一个线程更早的被销毁，我们需要在doInBackground()的代码中不断的添加程序是否被中止的判断逻辑，一旦任务被成功中止，AsyncTask就不会继续调用onPostExecute()，而是通过调用onCancelled()的回调方法反馈任务执行取消的结果。我们可以根据任务回调到哪个方法（是onPostExecute还是onCancelled）来决定是对UI进行正常的更新还是把对应的任务所占用的内存进行销毁等。如下图所示：
+
+![](https://github.com/guoxiaoxing/android-multi-thread-pratice/blob/master/image/android_perf_5_asynctask_cancel.png)
+
+3. 使用AsyncTask很容易导致内存泄漏，一旦把AsyncTask写成Activity的内部类的形式就很容易因为AsyncTask生命周期的不确定而导致Activity发生泄漏。
+
+##1.3 HandlerThread
 
 为了解决这个问题，Android系统为我们提供了Looper，Handler，MessageQueue来帮助实现上面的线程任务模型：
 
